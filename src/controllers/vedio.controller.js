@@ -4,7 +4,7 @@ import {asyncHandler} from "../utils/asyncHandler.js"
 
 import {apiResponse} from "../utils/apiResponse.js"
 import {apiError} from "../utils/apiError.js"
-import { mongoose, Query } from "mongoose";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 const getAllVedios=asyncHandler(async(req,res)=>{
     try {
@@ -47,9 +47,7 @@ const getAllVedios=asyncHandler(async(req,res)=>{
         }
         console.log(4);
         
-        // return res.json({
-        //     "name":"nikhli"
-        // })
+       
         return res.status(200)
                 .json(
                     new apiResponse(200,videos," all vedios fetched successfully")
@@ -62,8 +60,64 @@ const getAllVedios=asyncHandler(async(req,res)=>{
 
 })
 
+const publishAVideo=asyncHandler(async(req,res)=>{
+    const {title,description}=req.body
+
+    if (!title && !description) {
+        throw new apiError(400,"all feils are neccessary");
+    }
+
+    //get files
+    const videoPath=req.files?.videoFile[0]?.path
+    const thumbNailPath=req.files?.thumbNail[0]?.path
+
+    if (!videoPath&&!thumbNailPath) {
+        throw new apiError(409,"vedio and thumbnail are necessary")
+    }
+
+    //upload on cloudinary
+    const video=await uploadOnCloudinary(videoPath)
+    const thumbNail=await uploadOnCloudinary(thumbNailPath)
+
+    if (!video && !thumbNail) {
+        throw new apiError(500,"error while uploading files")
+    }
+
+    //get durartion
+    const videoDuration=video?.duration;
+
+    //get user
+    const owner = req.user._id
+
+    //entery in database
+    const videoData=await Video.create({
+        title:title,
+        description:description,
+        videoFile:video.url,
+        thumbNail:thumbNail.url,
+        duration:videoDuration,
+        owner:owner
+    })
+
+    //confirm if created 
+
+    const videoCreated = await Video.findById(videoData._id).select("-isPublic")
+
+    if (!videoCreated) {
+        throw new apiError(500,"cannot upload video")
+    }
+
+    return res.status(200)
+        .json(
+            new apiResponse(200,videoCreated,"video punlished successfully")
+        )
+
+    
+})
+
 
 export {
-    getAllVedios
+    getAllVedios,
+    publishAVideo
 }
 

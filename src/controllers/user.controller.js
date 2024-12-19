@@ -95,7 +95,7 @@ const registerUser=asyncHandler(async(req,res)=>{
     )
 
     if(!createdUser){
-        throw new apiError(500,"cannot create new error")
+        throw new apiError(500,"cannot create new user")
     }
 
 
